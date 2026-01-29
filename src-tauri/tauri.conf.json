@@ -10,13 +10,16 @@
     "beforeBuildCommand": "npm run build"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "Foxy Jumpscare",
         "width": 800,
         "height": 600,
         "resizable": false,
-        "fullscreen": true,
+        "maximized": true,
+        "visible": false,
+        "fullscreen": false,
         "transparent": true,
         "decorations": false
       }

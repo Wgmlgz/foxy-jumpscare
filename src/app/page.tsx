@@ -1,12 +1,11 @@
-"use client";
+'use client';
 
-import { decompressFrames, parseGIF, type ParsedFrame } from "gifuct-js";
-import { useEffect, useRef, useState } from "react";
+import { decompressFrames, parseGIF, type ParsedFrame } from 'gifuct-js';
+import { useEffect, useRef, useState } from 'react';
 
-const GIF_SRC = "/media/fnaf-2-fnaf.gif";
-const AUDIO_SRC = "/media/scream.mp3";
+const GIF_SRC = '/media/foxy.gif';
+const AUDIO_SRC = '/media/scream.mp3';
 const INTERVAL_MS = 5000;
-const MIN_FRAME_DELAY_MS = 20;
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -20,9 +19,10 @@ export default function Home() {
   useEffect(() => {
     const enableClickThrough = async () => {
       try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
         await getCurrentWindow().setIgnoreCursorEvents(true);
         await getCurrentWindow().setAlwaysOnTop(true);
+        await getCurrentWindow().show();
       } catch {
         // Ignore failures when not running inside Tauri.
       }
@@ -70,13 +70,13 @@ export default function Home() {
     }
 
     const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
+    const context = canvas?.getContext('2d');
     if (!canvas || !context) {
       return;
     }
 
     const audio = new Audio(AUDIO_SRC);
-    audio.preload = "auto";
+    audio.preload = 'auto';
     audioRef.current = audio;
 
     const clearFrameTimer = () => {
@@ -96,7 +96,7 @@ export default function Home() {
       if (shouldClose) {
         const closeApp = async () => {
           try {
-            const { getCurrentWindow } = await import("@tauri-apps/api/window");
+            const { getCurrentWindow } = await import('@tauri-apps/api/window');
             await getCurrentWindow().close();
           } catch {
             // Ignore failures when not running inside Tauri.
@@ -119,7 +119,7 @@ export default function Home() {
         // @ts-ignore
         frame.patch,
         frame.dims.width,
-        frame.dims.height
+        frame.dims.height,
       );
 
       context.putImageData(imageData, frame.dims.left, frame.dims.top);
@@ -129,12 +129,11 @@ export default function Home() {
       if (index < framesRef.current.length - 1) {
         frameTimerRef.current = window.setTimeout(
           () => drawFrame(index + 1),
-          delayMs
+          delayMs,
         );
       } else {
         frameTimerRef.current = null;
         context.clearRect(0, 0, canvas.width, canvas.height);
-
       }
     };
 
@@ -163,26 +162,27 @@ export default function Home() {
       stopPlayback(true);
     };
 
-    audio.addEventListener("ended", handleAudioEnded);
-    audio.addEventListener("error", handleAudioError);
+    audio.addEventListener('ended', handleAudioEnded);
+    audio.addEventListener('error', handleAudioError);
 
     playOnce();
     const intervalId = window.setInterval(playOnce, INTERVAL_MS);
 
     return () => {
       window.clearInterval(intervalId);
-      audio.removeEventListener("ended", handleAudioEnded);
-      audio.removeEventListener("error", handleAudioError);
+      audio.removeEventListener('ended', handleAudioEnded);
+      audio.removeEventListener('error', handleAudioError);
       stopPlayback(false);
     };
   }, [ready]);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-transparent pointer-events-none">
+    <div className='fixed inset-0 flex items-center justify-center bg-transparent pointer-events-none'>
       <canvas
         ref={canvasRef}
-        className={`h-full w-full object-contain ${visible ? "opacity-100" : "opacity-0"
-          }`}
+        className={`h-full w-full object-contain ${
+          visible ? 'opacity-100' : 'opacity-0'
+        }`}
       />
     </div>
   );
