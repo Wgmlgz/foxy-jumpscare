@@ -5,8 +5,7 @@
   "identifier": "com.foxy.jumpscare",
   "build": {
     "frontendDist": "../out",
-    "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run build",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
@@ -19,6 +18,7 @@
         "resizable": false,
         "maximized": true,
         "visible": false,
+        "alwaysOnTop": true,
         "fullscreen": false,
         "transparent": true,
         "decorations": false
