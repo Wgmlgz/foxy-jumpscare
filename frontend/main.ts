@@ -1,9 +1,15 @@
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { decompressFrames, parseGIF, type ParsedFrame } from 'gifuct-js';
 
 const GIF_SRC = './media/foxy.gif';
 const AUDIO_SRC = './media/scream.mp3';
 const FAILSAFE_CLOSE_MS = 15000;
+
+type StartPayload = {
+  close_on_end?: boolean;
+};
 
 const closeWindow = async () => {
   try {
@@ -35,6 +41,9 @@ const run = async () => {
   const audio = new Audio(AUDIO_SRC);
   audio.preload = 'auto';
   audio.load();
+
+  let isPlaying = false;
+  const startQueue: StartPayload[] = [];
 
   await Promise.allSettled([
     win.setIgnoreCursorEvents(true),
@@ -82,25 +91,84 @@ const run = async () => {
     canvas.style.opacity = '0';
   };
 
-  canvas.style.opacity = '1';
-  await win.show().catch(() => {});
-  audio.currentTime = 0;
-  void audio.play().catch(() => {});
-  drawFrame(0);
-
-  let closed = false;
-  const closeOnce = () => {
-    if (closed) {
+  const playOnce = async (closeOnEnd: boolean) => {
+    if (isPlaying) {
       return;
     }
-    closed = true;
+
+    isPlaying = true;
     stopVisual();
-    void closeWindow();
+
+    canvas.style.opacity = '1';
+    await win.show().catch(() => {});
+    audio.currentTime = 0;
+    void audio.play().catch(() => {});
+    drawFrame(0);
+
+    await new Promise<void>((resolve) => {
+      let finished = false;
+      const timeoutId = window.setTimeout(() => {
+        finalize();
+      }, FAILSAFE_CLOSE_MS);
+
+      const finalize = () => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        window.clearTimeout(timeoutId);
+        audio.removeEventListener('ended', onEnded);
+        audio.removeEventListener('error', onError);
+        resolve();
+      };
+
+      const onEnded = () => finalize();
+      const onError = () => finalize();
+
+      audio.addEventListener('ended', onEnded);
+      audio.addEventListener('error', onError);
+    });
+
+    stopVisual();
+    if (closeOnEnd) {
+      await closeWindow();
+    } else {
+      await win.hide().catch(() => {});
+    }
+
+    isPlaying = false;
   };
 
-  audio.addEventListener('ended', closeOnce, { once: true });
-  audio.addEventListener('error', closeOnce, { once: true });
-  window.setTimeout(closeOnce, FAILSAFE_CLOSE_MS);
+  const drainQueue = async () => {
+    if (isPlaying) {
+      return;
+    }
+
+    const next = startQueue.shift();
+    if (!next) {
+      return;
+    }
+
+    await playOnce(Boolean(next.close_on_end));
+
+    if (startQueue.length > 0) {
+      void drainQueue();
+    }
+  };
+
+  const enqueueStart = (payload?: StartPayload) => {
+    startQueue.push(payload ?? {});
+    void drainQueue();
+  };
+
+  await listen<StartPayload>('foxy:start', (event) => {
+    enqueueStart(event.payload);
+  });
+
+  await invoke('frontend_ready').catch(() => {
+    // Browser fallback for local testing without the backend command.
+    enqueueStart({ close_on_end: true });
+  });
 };
 
 void run();
